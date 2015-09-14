@@ -29,27 +29,28 @@ class GamesController < ApplicationController
   def show
     players = Player.all.includes(ratings: :history_events).where(ratings: { game: @game })
 
-    player_to_days = Hash.new
-    every_day = Set.new
+    player_to_hours = Hash.new
+    every_hour = Set.new
     players.each do |player|
       day_to_event = Hash.new
       RatingHistoryEvent.events(player, @game).each do |event|
-        day_to_event[event.created_at.to_date.to_s] = event.value
-        every_day.add(event.created_at.to_date.to_s)
+        day_to_event[event.created_at.to_datetime.beginning_of_hour.to_s] = event.value
+        event.created_at.to_datetime.beginning_of_hour
+        every_hour.add(event.created_at.to_datetime.beginning_of_hour.to_s)
       end
-      player_to_days[player.name] = day_to_event
+      player_to_hours[player.name] = day_to_event
     end
 
     players.each do |player|
       last_rating = nil
-      every_day.to_a.sort.each_with_index do |day, i|
-        last_rating = player_to_days[player.name].fetch(day, last_rating)
-        player_to_days[player.name][day] = last_rating
+      every_hour.to_a.sort.each_with_index do |hour, i|
+        last_rating = player_to_hours[player.name].fetch(hour, last_rating)
+        player_to_hours[player.name][hour] = last_rating
       end
     end
 
     @chart_data = players.map do |player|
-      {:name => player.name, :data => player_to_days[player.name].to_a}
+      {:name => player.name, :data => player_to_hours[player.name].to_a}
     end
 
     respond_to do |format|
